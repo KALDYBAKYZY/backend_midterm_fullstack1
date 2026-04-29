@@ -3,7 +3,6 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const Stock = require("../models/Stock");
 
-// GET /api/stocks - All stocks (public)
 router.get("/", async (req, res) => {
   try {
     const stocks = await Stock.find().populate("owner", "email");
@@ -13,7 +12,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/stocks/mine - Current user's stock
 router.get("/mine", authMiddleware, async (req, res) => {
   try {
     const stock = await Stock.findOne({ owner: req.user });
@@ -23,7 +21,6 @@ router.get("/mine", authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/stocks/create - Create a stock (one per user)
 router.post("/create", authMiddleware, async (req, res) => {
   const { ticker, price } = req.body;
 
@@ -32,7 +29,6 @@ router.post("/create", authMiddleware, async (req, res) => {
   }
 
   try {
-    // Check if user already has a stock
     const existing = await Stock.findOne({ owner: req.user });
     if (existing) {
       return res
@@ -40,7 +36,6 @@ router.post("/create", authMiddleware, async (req, res) => {
         .json({ message: "You already have a stock listed" });
     }
 
-    // Check if ticker is taken
     const takenTicker = await Stock.findOne({
       ticker: ticker.toUpperCase(),
     });
@@ -60,7 +55,6 @@ router.post("/create", authMiddleware, async (req, res) => {
   }
 });
 
-// PUT /api/stocks/:id/price - Update price (owner only)
 router.put("/:id/price", authMiddleware, async (req, res) => {
   const { price } = req.body;
 
@@ -73,8 +67,6 @@ router.put("/:id/price", authMiddleware, async (req, res) => {
     if (!stock) {
       return res.status(404).json({ message: "Stock not found" });
     }
-
-    // Only the owner can change the price
     if (stock.owner.toString() !== req.user) {
       return res
         .status(403)
@@ -84,7 +76,6 @@ router.put("/:id/price", authMiddleware, async (req, res) => {
     stock.price = price;
     await stock.save();
 
-    // Broadcast is handled in server.js via the broadcast function injected into req
     if (req.broadcast) {
       req.broadcast({
         type: "TICKER_UPDATE",

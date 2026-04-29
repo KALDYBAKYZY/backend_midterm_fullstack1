@@ -5,7 +5,6 @@ const Stock = require("../models/Stock");
 const User = require("../models/User");
 const Holding = require("../models/Holding");
 
-// POST /api/trade/buy
 router.post("/buy", authMiddleware, async (req, res) => {
   const { stockId, shares } = req.body;
 
@@ -19,7 +18,6 @@ router.post("/buy", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Stock not found" });
     }
 
-    // Cannot buy your own stock
     if (stock.owner.toString() === req.user) {
       return res.status(400).json({ message: "Cannot buy your own stock" });
     }
@@ -33,18 +31,8 @@ router.post("/buy", authMiddleware, async (req, res) => {
         .json({ message: "Insufficient funds", required: total, wallet: user.wallet });
     }
 
-    // Найти владельца акции чтобы перевести ему деньги
-    const stockOwner = await User.findById(stock.owner);
-    if (!stockOwner) {
-      return res.status(404).json({ message: "Stock owner not found" });
-    }
-
-    // Вычитаем у покупателя, зачисляем владельцу акции
     user.wallet -= total;
     await user.save();
-
-    stockOwner.wallet += total;
-    await stockOwner.save();
 
     let holding = await Holding.findOne({ user: req.user, stock: stockId });
     if (holding) {
@@ -68,7 +56,6 @@ router.post("/buy", authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/trade/sell
 router.post("/sell", authMiddleware, async (req, res) => {
   const { stockId, shares } = req.body;
 
@@ -91,22 +78,8 @@ router.post("/sell", authMiddleware, async (req, res) => {
 
     const user = await User.findById(req.user);
 
-    // Найти владельца акции чтобы вычесть деньги у него (он "выкупает" обратно)
-    const stockOwner = await User.findById(stock.owner);
-
-    // Проверить что у владельца акции хватает денег выкупить
-    if (stockOwner && stockOwner._id.toString() !== req.user && stockOwner.wallet < total) {
-      return res.status(400).json({ message: "Stock owner has insufficient funds to buy back" });
-    }
-
-    // Продавец получает деньги, владелец акции платит
     user.wallet += total;
     await user.save();
-
-    if (stockOwner && stockOwner._id.toString() !== req.user) {
-      stockOwner.wallet -= total;
-      await stockOwner.save();
-    }
 
     holding.shares -= shares;
     await holding.save();
@@ -121,7 +94,6 @@ router.post("/sell", authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/trade/portfolio - Get user's holdings
 router.get("/portfolio", authMiddleware, async (req, res) => {
   try {
     const holdings = await Holding.find({ user: req.user })
