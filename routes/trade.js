@@ -18,10 +18,6 @@ router.post("/buy", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Stock not found" });
     }
 
-    if (stock.owner.toString() === req.user) {
-      return res.status(400).json({ message: "Cannot buy your own stock" });
-    }
-
     const total = stock.price * shares;
 
     const user = await User.findById(req.user);
